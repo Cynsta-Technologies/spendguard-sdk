@@ -66,6 +66,8 @@ Publish:
 2. Push tag `spendguard-cli-vX.Y.Z` (example `spendguard-cli-v0.1.0`).
 3. GitHub Actions workflow `.github/workflows/publish-spendguard-cli.yml` publishes to PyPI.
 
+Maintainer setup checklist: `docs/maintainer-setup.md`.
+
 ## Python Client
 
 ```python
