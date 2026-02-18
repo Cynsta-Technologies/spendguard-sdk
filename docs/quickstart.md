@@ -84,9 +84,13 @@ pip install -e .
 spendguard agent create --name "agent-1"
 spendguard agent list
 
-# Replace with the returned agent_id:
+# Replace <agent_id> with the returned value for commands below:
+spendguard agent get --agent <agent_id>
+spendguard agent rename --agent <agent_id> --name "agent-1-renamed"
 spendguard budget set --agent <agent_id> --limit 5000 --topup 500
 spendguard budget get --agent <agent_id>
+# Optional cleanup:
+spendguard agent delete --agent <agent_id>
 ```
 
 If these commands work, local onboarding is complete.

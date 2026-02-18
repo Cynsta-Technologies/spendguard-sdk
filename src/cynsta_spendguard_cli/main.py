@@ -107,6 +107,18 @@ def _print_budget(data: dict[str, Any], fallback_agent_id: str | None = None) ->
             print(f"{key}={data[key]}")
 
 
+def _print_agent(data: dict[str, Any], fallback_agent_id: str | None = None) -> None:
+    agent_id = data.get("agent_id", fallback_agent_id or "")
+    line = f"agent_id={agent_id}"
+    name = data.get("name")
+    if name:
+        line += f" name={name}"
+    created_at = data.get("created_at")
+    if created_at:
+        line += f" created_at={created_at}"
+    print(line)
+
+
 def _cmd_agent_create(args: argparse.Namespace) -> int:
     api_key = _resolve_api_key(args)
     endpoint = f"{_base_url(args.base_url)}/v1/agents"
@@ -144,15 +156,50 @@ def _cmd_agent_list(args: argparse.Namespace) -> int:
     for row in rows:
         if not isinstance(row, dict):
             continue
-        agent_id = row.get("agent_id", "")
-        name = row.get("name")
-        created_at = row.get("created_at", "")
-        line = f"agent_id={agent_id}"
-        if name:
-            line += f" name={name}"
-        if created_at:
-            line += f" created_at={created_at}"
-        print(line)
+        _print_agent(row)
+    return 0
+
+
+def _cmd_agent_get(args: argparse.Namespace) -> int:
+    api_key = _resolve_api_key(args)
+    endpoint = f"{_base_url(args.base_url)}/v1/agents/{urllib.parse.quote(args.agent, safe='')}"
+    data = _request_json(method="GET", url=endpoint, headers=_headers(api_key))
+
+    if args.json:
+        print(json.dumps(data, indent=2, sort_keys=True))
+        return 0
+
+    _print_agent(data, fallback_agent_id=args.agent)
+    return 0
+
+
+def _cmd_agent_rename(args: argparse.Namespace) -> int:
+    api_key = _resolve_api_key(args)
+    endpoint = f"{_base_url(args.base_url)}/v1/agents/{urllib.parse.quote(args.agent, safe='')}"
+    data = _request_json(method="PATCH", url=endpoint, headers=_headers(api_key), payload={"name": args.name})
+
+    if args.json:
+        print(json.dumps(data, indent=2, sort_keys=True))
+        return 0
+
+    _print_agent(data, fallback_agent_id=args.agent)
+    return 0
+
+
+def _cmd_agent_delete(args: argparse.Namespace) -> int:
+    api_key = _resolve_api_key(args)
+    endpoint = f"{_base_url(args.base_url)}/v1/agents/{urllib.parse.quote(args.agent, safe='')}"
+    data = _request_json(method="DELETE", url=endpoint, headers=_headers(api_key))
+
+    if args.json:
+        print(json.dumps(data, indent=2, sort_keys=True))
+        return 0
+
+    deleted_agent_id = data.get("agent_id", args.agent)
+    if data.get("deleted") is True:
+        print(f"deleted agent_id={deleted_agent_id}")
+        return 0
+    print(json.dumps(data, sort_keys=True))
     return 0
 
 
@@ -203,6 +250,28 @@ def build_parser() -> argparse.ArgumentParser:
     agent_list.add_argument("--api-key", default=None, help="Hosted mode API key")
     agent_list.add_argument("--json", action="store_true", help="Print raw JSON response")
     agent_list.set_defaults(handler=_cmd_agent_list)
+
+    agent_get = agent_subparsers.add_parser("get", help="Get a SpendGuard agent")
+    agent_get.add_argument("--agent", required=True, help="SpendGuard agent_id")
+    agent_get.add_argument("--base-url", default=None, help="SpendGuard base URL")
+    agent_get.add_argument("--api-key", default=None, help="Hosted mode API key")
+    agent_get.add_argument("--json", action="store_true", help="Print raw JSON response")
+    agent_get.set_defaults(handler=_cmd_agent_get)
+
+    agent_rename = agent_subparsers.add_parser("rename", help="Rename a SpendGuard agent")
+    agent_rename.add_argument("--agent", required=True, help="SpendGuard agent_id")
+    agent_rename.add_argument("--name", required=True, help="New agent name")
+    agent_rename.add_argument("--base-url", default=None, help="SpendGuard base URL")
+    agent_rename.add_argument("--api-key", default=None, help="Hosted mode API key")
+    agent_rename.add_argument("--json", action="store_true", help="Print raw JSON response")
+    agent_rename.set_defaults(handler=_cmd_agent_rename)
+
+    agent_delete = agent_subparsers.add_parser("delete", help="Delete a SpendGuard agent")
+    agent_delete.add_argument("--agent", required=True, help="SpendGuard agent_id")
+    agent_delete.add_argument("--base-url", default=None, help="SpendGuard base URL")
+    agent_delete.add_argument("--api-key", default=None, help="Hosted mode API key")
+    agent_delete.add_argument("--json", action="store_true", help="Print raw JSON response")
+    agent_delete.set_defaults(handler=_cmd_agent_delete)
 
     budget_parser = subparsers.add_parser("budget", help="Budget operations")
     budget_subparsers = budget_parser.add_subparsers(dest="budget_command")
