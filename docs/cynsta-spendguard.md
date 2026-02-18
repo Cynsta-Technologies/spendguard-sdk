@@ -109,6 +109,9 @@ It supports:
 
 - `POST /v1/agents` -> `{ agent_id }`
 - `GET /v1/agents` -> `{ agents: [{ agent_id, name, created_at }, ...] }`
+- `GET /v1/agents/{agent_id}` -> `{ agent_id, name, created_at }`
+- `PATCH /v1/agents/{agent_id}` body `{ name }`
+- `DELETE /v1/agents/{agent_id}` -> `{ agent_id, deleted }`
 - `POST /v1/agents/{agent_id}/budget` body `{ hard_limit_cents, topup_cents }`
 - `GET /v1/agents/{agent_id}/budget`
 - `POST /v1/agents/{agent_id}/runs` -> `{ run_id }`
@@ -166,8 +169,11 @@ CLI budget set command:
 pip install cynsta-spendguard
 spendguard agent create --name "agent-1"
 spendguard agent list
+spendguard agent get --agent <agent_id>
+spendguard agent rename --agent <agent_id> --name "agent-1-renamed"
 spendguard budget set --agent <agent_id> --limit 5000 --topup 5000
 spendguard budget get --agent <agent_id>
+spendguard agent delete --agent <agent_id>
 ```
 
 Unit tests:

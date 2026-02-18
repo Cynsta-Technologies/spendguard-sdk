@@ -39,6 +39,24 @@ List agents:
 spendguard agent list
 ```
 
+Get an agent:
+
+```bash
+spendguard agent get --agent <agent_id>
+```
+
+Rename an agent:
+
+```bash
+spendguard agent rename --agent <agent_id> --name "agent-1-renamed"
+```
+
+Delete an agent:
+
+```bash
+spendguard agent delete --agent <agent_id>
+```
+
 Set a budget for an existing agent:
 
 ```bash

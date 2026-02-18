@@ -70,6 +70,27 @@ class SpendguardCliTests(unittest.TestCase):
                     run(["agent", "list"])
         self.assertFalse(urlopen.called)
 
+    def test_hosted_mode_requires_key_for_agent_get(self) -> None:
+        with mock.patch.dict(os.environ, {"CAP_MODE": "hosted"}, clear=False):
+            with mock.patch("urllib.request.urlopen") as urlopen:
+                with self.assertRaises(CliError):
+                    run(["agent", "get", "--agent", "a1"])
+        self.assertFalse(urlopen.called)
+
+    def test_hosted_mode_requires_key_for_agent_rename(self) -> None:
+        with mock.patch.dict(os.environ, {"CAP_MODE": "hosted"}, clear=False):
+            with mock.patch("urllib.request.urlopen") as urlopen:
+                with self.assertRaises(CliError):
+                    run(["agent", "rename", "--agent", "a1", "--name", "renamed"])
+        self.assertFalse(urlopen.called)
+
+    def test_hosted_mode_requires_key_for_agent_delete(self) -> None:
+        with mock.patch.dict(os.environ, {"CAP_MODE": "hosted"}, clear=False):
+            with mock.patch("urllib.request.urlopen") as urlopen:
+                with self.assertRaises(CliError):
+                    run(["agent", "delete", "--agent", "a1"])
+        self.assertFalse(urlopen.called)
+
     def test_sidecar_mode_does_not_send_api_key(self) -> None:
         fake = _FakeResponse(
             json.dumps(
@@ -237,6 +258,49 @@ class SpendguardCliTests(unittest.TestCase):
                 rc = run(["agent", "list"])
         self.assertEqual(rc, 0)
         self.assertIn("(no agents)", out.getvalue())
+
+    def test_agent_get_request_path_and_method(self) -> None:
+        fake = _FakeResponse(
+            json.dumps({"agent_id": "a1", "name": "agent-1", "created_at": "2026-02-12T12:00:00Z"})
+        )
+        out = io.StringIO()
+        with mock.patch("urllib.request.urlopen", return_value=fake) as urlopen:
+            with contextlib.redirect_stdout(out):
+                rc = run(["agent", "get", "--agent", "a1"])
+        self.assertEqual(rc, 0)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://localhost:8787/v1/agents/a1")
+        self.assertEqual(request.get_method(), "GET")
+        self.assertIsNone(request.data)
+        self.assertIn("agent_id=a1", out.getvalue())
+        self.assertIn("name=agent-1", out.getvalue())
+
+    def test_agent_rename_request_path_and_payload(self) -> None:
+        fake = _FakeResponse(
+            json.dumps({"agent_id": "a1", "name": "renamed-agent", "created_at": "2026-02-12T12:00:00Z"})
+        )
+        with mock.patch("urllib.request.urlopen", return_value=fake) as urlopen:
+            with contextlib.redirect_stdout(io.StringIO()):
+                rc = run(["agent", "rename", "--agent", "a1", "--name", "renamed-agent"])
+        self.assertEqual(rc, 0)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://localhost:8787/v1/agents/a1")
+        self.assertEqual(request.get_method(), "PATCH")
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(payload, {"name": "renamed-agent"})
+
+    def test_agent_delete_request_path_and_method(self) -> None:
+        fake = _FakeResponse(json.dumps({"agent_id": "a1", "deleted": True}))
+        out = io.StringIO()
+        with mock.patch("urllib.request.urlopen", return_value=fake) as urlopen:
+            with contextlib.redirect_stdout(out):
+                rc = run(["agent", "delete", "--agent", "a1"])
+        self.assertEqual(rc, 0)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://localhost:8787/v1/agents/a1")
+        self.assertEqual(request.get_method(), "DELETE")
+        self.assertIsNone(request.data)
+        self.assertIn("deleted agent_id=a1", out.getvalue())
 
     def test_http_error_with_detail_raises_cli_error(self) -> None:
         err = urllib.error.HTTPError(

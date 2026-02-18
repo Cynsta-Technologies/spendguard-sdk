@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -19,46 +20,59 @@ class SpendGuardClient:
     def list_agents(self) -> dict[str, Any]:
         return self._request_json("GET", "/v1/agents")
 
+    def get_agent(self, agent_id: str) -> dict[str, Any]:
+        return self._request_json("GET", f"/v1/agents/{self._encode_segment(agent_id)}")
+
+    def rename_agent(self, agent_id: str, name: str) -> dict[str, Any]:
+        return self._request_json("PATCH", f"/v1/agents/{self._encode_segment(agent_id)}", {"name": name})
+
+    def delete_agent(self, agent_id: str) -> dict[str, Any]:
+        return self._request_json("DELETE", f"/v1/agents/{self._encode_segment(agent_id)}")
+
     def set_budget(self, agent_id: str, hard_limit_cents: int, topup_cents: int = 0) -> dict[str, Any]:
         payload = {
             "hard_limit_cents": int(hard_limit_cents),
             "topup_cents": int(topup_cents),
         }
-        return self._request_json("POST", f"/v1/agents/{agent_id}/budget", payload)
+        return self._request_json("POST", f"/v1/agents/{self._encode_segment(agent_id)}/budget", payload)
 
     def get_budget(self, agent_id: str) -> dict[str, Any]:
-        return self._request_json("GET", f"/v1/agents/{agent_id}/budget")
+        return self._request_json("GET", f"/v1/agents/{self._encode_segment(agent_id)}/budget")
 
     def create_run(self, agent_id: str) -> dict[str, Any]:
-        return self._request_json("POST", f"/v1/agents/{agent_id}/runs", {})
+        return self._request_json("POST", f"/v1/agents/{self._encode_segment(agent_id)}/runs", {})
 
     def openai_chat_completions(self, agent_id: str, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request_json(
             "POST",
-            f"/v1/agents/{agent_id}/runs/{run_id}/openai/chat/completions",
+            f"/v1/agents/{self._encode_segment(agent_id)}/runs/{self._encode_segment(run_id)}/openai/chat/completions",
             payload,
         )
 
     def openai_responses(self, agent_id: str, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request_json(
             "POST",
-            f"/v1/agents/{agent_id}/runs/{run_id}/openai/responses",
+            f"/v1/agents/{self._encode_segment(agent_id)}/runs/{self._encode_segment(run_id)}/openai/responses",
             payload,
         )
 
     def grok_chat_completions(self, agent_id: str, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request_json(
             "POST",
-            f"/v1/agents/{agent_id}/runs/{run_id}/grok/chat/completions",
+            f"/v1/agents/{self._encode_segment(agent_id)}/runs/{self._encode_segment(run_id)}/grok/chat/completions",
             payload,
         )
 
     def grok_responses(self, agent_id: str, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request_json(
             "POST",
-            f"/v1/agents/{agent_id}/runs/{run_id}/grok/responses",
+            f"/v1/agents/{self._encode_segment(agent_id)}/runs/{self._encode_segment(run_id)}/grok/responses",
             payload,
         )
+
+    @staticmethod
+    def _encode_segment(value: str) -> str:
+        return urllib.parse.quote(value, safe="")
 
     def _request_json(self, method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         body = None
